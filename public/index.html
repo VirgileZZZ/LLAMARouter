@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console llama.cpp</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23141826'/><g fill='none' stroke='%23525e77' stroke-width='1.6' stroke-linecap='round'><path d='M11.6 16C15 16 15.2 10.6 18.6 10.6'/><path d='M11.6 16h7'/><path d='M11.6 16C15 16 15.2 21.4 18.6 21.4'/></g><rect x='6.4' y='9' width='3.6' height='14' rx='1.8' fill='%238b7cff'/><rect x='18.6' y='9.3' width='7' height='2.7' rx='1.35' fill='%2345c8c0'/><rect x='18.6' y='14.65' width='7' height='2.7' rx='1.35' fill='%238b7cff'/><rect x='18.6' y='20' width='7' height='2.7' rx='1.35' fill='%23f0b03c'/></svg>">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ===================== barre haute : le reacteur ===================== -->
+<header class="topbar">
+  <div class="brand">
+    <!-- un modele charge a gauche, les agents paralleles a droite ; les trois
+         couleurs sont celles de la legende VRAM : poids, cache KV, calcul -->
+    <svg class="brand-mark" id="brandMark" viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <linearGradient id="bmField" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1c2130"/>
+          <stop offset="1" stop-color="#0d0f15"/>
+        </linearGradient>
+      </defs>
+      <rect x=".75" y=".75" width="30.5" height="30.5" rx="9" fill="url(#bmField)" stroke="#2b3243" stroke-width="1.5"/>
+      <g fill="none" stroke="#525e77" stroke-width="1.6" stroke-linecap="round">
+        <path d="M11.6 16C15 16 15.2 10.6 18.6 10.6"/>
+        <path d="M11.6 16h7"/>
+        <path d="M11.6 16C15 16 15.2 21.4 18.6 21.4"/>
+      </g>
+      <rect x="6.4" y="9" width="3.6" height="14" rx="1.8" fill="#8b7cff"/>
+      <g class="bm-agents">
+        <rect x="18.6" y="9.3" width="7" height="2.7" rx="1.35" fill="#45c8c0"/>
+        <rect x="18.6" y="14.65" width="7" height="2.7" rx="1.35" fill="#8b7cff"/>
+        <rect x="18.6" y="20" width="7" height="2.7" rx="1.35" fill="#f0b03c"/>
+      </g>
+    </svg>
+    <span class="brand-text">console<b>llama.cpp</b></span>
+  </div>
+
+  <div class="reactor" id="reactor">
+    <div class="reactor-head">
+      <span class="reactor-title" id="reactorModel">aucun modele charge</span>
+      <span class="reactor-state" id="reactorState">a l'arret</span>
+    </div>
+    <div class="vram-bar" id="vramBar" title="repartition de la VRAM">
+      <div class="seg seg-w"   id="segW"></div>
+      <div class="seg seg-kv"  id="segKv"></div>
+      <div class="seg seg-c"   id="segC"></div>
+      <div class="seg seg-oth" id="segOth"></div>
+    </div>
+    <div class="reactor-foot">
+      <span id="vramText" class="mono">--</span>
+      <span class="agents" id="agentDots"></span>
+      <span class="queue-chip" id="queueChip" hidden></span>
+    </div>
+  </div>
+
+  <div class="gpu-chip" id="gpuChip">
+    <span class="gpu-name" id="gpuName">GPU</span>
+    <span class="gpu-stats mono" id="gpuStats">--</span>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- ===================== navigation ===================== -->
+  <nav class="side">
+    <button class="nav" data-page="models"   aria-current="page">Modeles<span class="nav-badge" id="navModels"></span></button>
+    <button class="nav" data-page="server">Serveur<span class="dot-live" id="navLive" hidden></span></button>
+    <button class="nav" data-page="keys">Cles API<span class="nav-badge" id="navKeys"></span></button>
+    <button class="nav" data-page="activity">Activite</button>
+    <button class="nav" data-page="pricing">Tarifs</button>
+    <button class="nav" data-page="admin">Admin<span class="dot-pub" id="navPublic" hidden title="acces distant actif"></span></button>
+    <button class="nav" data-page="settings">Reglages</button>
+    <div class="side-foot">
+      <div class="lan-block" id="addrBlock">
+        <span class="lbl">adresses a partager</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ===================== page modeles ===================== -->
+    <section class="page" data-page="models">
+      <div class="page-head">
+        <div>
+          <h1>Modeles</h1>
+          <p class="sub">Choisis le modele a servir. Les variantes d&#39;un meme reseau sont regroupees : clique la famille pour les voir. Le catalogue est lu dans <code class="mono" id="mjPath">models.json</code>, le meme fichier que le lanceur .bat.</p>
+        </div>
+        <div class="head-tools">
+          <span class="hint" id="modelCount"></span>
+          <input class="search" id="modelSearch" type="search" placeholder="filtrer par nom, quantification, taille..." autocomplete="off">
+        </div>
+      </div>
+      <div class="model-list" id="modelList"></div>
+    </section>
+
+    <!-- ===================== page serveur ===================== -->
+    <section class="page" data-page="server" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Serveur</h1>
+          <p class="sub">Etat du processus llama-server et journal en direct.</p>
+        </div>
+        <div class="row-actions">
+          <button class="btn ghost" id="btnRestart">Relancer</button>
+          <button class="btn danger" id="btnStop">Arreter</button>
+        </div>
+      </div>
+
+      <div class="grid-3" id="serverCards"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Agents</h2>
+          <span class="hint" id="slotsHint">--</span>
+        </div>
+        <div class="slot-grid" id="slotGrid"><p class="empty">Aucun agent : le serveur est a l'arret.</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Journal</h2>
+          <div class="row-actions">
+            <label class="check"><input type="checkbox" id="autoScroll" checked> suivre</label>
+            <button class="mini" id="copyCmd">copier la commande</button>
+          </div>
+        </div>
+        <pre class="console" id="logView"></pre>
+      </div>
+    </section>
+
+    <!-- ===================== page cles ===================== -->
+    <section class="page" data-page="keys" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Cles API</h1>
+          <p class="sub">Une cle par personne. Elle donne acces au modele charge, via une API compatible OpenAI. Revoquer une cle prend effet immediatement, sans redemarrer le modele.</p>
+        </div>
+        <button class="btn primary" id="btnNewKey">Creer une cle</button>
+      </div>
+
+      <div class="connect-card">
+        <div class="connect-head">
+          <h2>Comment s'y connecter</h2>
+          <div class="tabs" id="connectTabs">
+            <button class="tab on" data-t="url">Adresse</button>
+            <button class="tab" data-t="opencode">opencode</button>
+            <button class="tab" data-t="curl">curl</button>
+            <button class="tab" data-t="py">Python</button>
+            <button class="tab" data-t="js">JavaScript</button>
+          </div>
+        </div>
+        <pre class="snippet mono" id="connectSnippet"></pre>
+        <div class="snippet-tools">
+          <button class="mini" id="revealKey">montrer la cle</button>
+          <button class="mini" id="copySnippet">copier</button>
+        </div>
+      </div>
+
+      <div class="key-list" id="keyList"></div>
+    </section>
+
+    <!-- ===================== page activite ===================== -->
+    <section class="page" data-page="activity" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Activite</h1>
+          <p class="sub">Requetes passees par la passerelle. Les tokens sont exacts quand llama.cpp les renvoie, estimes sinon.</p>
+        </div>
+        <div class="row-actions">
+          <div class="tabs" id="actRange">
+            <button class="tab on" data-r="30">30 dernieres</button>
+            <button class="tab" data-r="hour">derniere heure</button>
+            <button class="tab" data-r="day">aujourd'hui</button>
+            <button class="tab" data-r="all">tout</button>
+          </div>
+          <button class="mini" id="refreshActivity">actualiser</button>
+        </div>
+      </div>
+
+      <div class="grid-3" id="activityCards"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>14 derniers jours</h2><span class="hint">tokens generes par jour</span></div>
+        <div class="chart" id="chart"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Requetes recentes</h2><span class="hint" id="actCount"></span></div>
+        <div class="table-wrap">
+          <table class="table" id="activityTable">
+            <thead><tr><th>heure</th><th>cle</th><th>appareil</th><th>route</th><th class="num">entree</th><th class="num">sortie</th><th class="num">aurait coute</th><th class="num">duree</th><th class="num">statut</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== page tarifs ===================== -->
+    <section class="page" data-page="pricing" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Tarifs</h1>
+          <p class="sub">Prix par million de tokens, comme chez OpenRouter. Ils servent a deux choses : debiter les enveloppes des cles, et chiffrer ce que tout ceci aurait coute ailleurs.</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="pricingOn">
+          <span class="track"><span class="knob"></span></span>
+          <span class="switch-lbl" id="pricingLbl">actif</span>
+        </label>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Monnaie et valeurs par defaut</h2><span class="hint">servent aux modeles sans prix</span></div>
+        <div class="pad">
+          <div class="row-actions pricing-head">
+            <label class="field-lite inline">Monnaie
+              <select class="inp" id="pricingCurrency">
+                <option value="USD">USD $</option>
+                <option value="EUR">EUR €</option>
+              </select>
+            </label>
+            <label class="field-lite inline">Defaut entree<input class="inp mono small" id="priceDefIn" type="number" step="0.01" min="0"></label>
+            <label class="field-lite inline">Defaut sortie<input class="inp mono small" id="priceDefOut" type="number" step="0.01" min="0"></label>
+            <label class="field-lite inline">Entree relue (% de l&#39;entree)<input class="inp mono small" id="priceCacheRatio" type="number" step="1" min="0" max="100"></label>
+            <label class="field-lite inline">Prix du kWh (€)<input class="inp mono small" id="priceKwh" type="number" step="0.005" min="0" max="10"></label>
+          </div>
+          <label class="check"><input type="checkbox" id="reportCost"> renvoyer le cout dans la reponse de l'API (<code class="mono">usage.cost</code>)</label>
+          <details class="note">
+            <summary>a quoi ca sert</summary>
+            <p>C'est ce que lisent les clients qui savent afficher un prix. En flux, la console demande <code class="mono">stream_options.include_usage</code> a llama.cpp pour obtenir le decompte, et y glisse le cout. Decoche si un client s'en trouve gene.</p>
+            <p><b>opencode fait exception</b> : il calcule la depense a partir de sa propre configuration. Utilise l'onglet <i>opencode</i> de la page Cles API.</p>
+          </details>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Prix par modele</h2>
+          <div class="row-actions">
+            <span class="hint" id="priceHint"></span>
+            <button class="btn primary" id="savePricing">Enregistrer les tarifs</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="priceTable">
+            <thead><tr><th>modele</th><th class="num">entree / 1M</th><th class="num">entree relue / 1M</th><th class="num">sortie / 1M</th><th class="num">tokens servis</th><th class="num">a coute</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="help pad-x">Ecrits dans <code class="mono">models.json</code>, sous <code class="mono">price_in</code>, <code class="mono">price_out</code> et <code class="mono">price_cache</code> ; le .bat ignore ces cles. Un champ entree ou sortie laisse vide garde le prix en place ; une <b>entree relue</b> laissee vide retombe sur la fraction generale. Les prix marques <i>suggere</i> sont deduits de la taille du modele : a corriger.</p>
+      </div>
+
+      <!-- economies -->
+      <div class="grid-3" id="savingCards"></div>
+
+    </section>
+
+    <!-- ===================== page admin ===================== -->
+    <section class="page" data-page="admin" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Admin</h1>
+          <p class="sub">Qui peut se connecter, depuis ou, et ce que ca coute. L'espace utilisateur et le chargement a la demande se reglent dans <b>Reglages</b>.</p>
+        </div>
+      </div>
+
+      <!-- acces distant -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Acces hors du reseau local</h2>
+          <label class="switch">
+            <input type="checkbox" id="remoteOn">
+            <span class="track"><span class="knob"></span></span>
+            <span class="switch-lbl" id="remoteLbl">desactive</span>
+          </label>
+        </div>
+
+        <div class="pad">
+          <p class="help" id="remoteWhy">Tant que c'est desactive, une requete venant d'ailleurs que du reseau local est refusee, meme avec une cle valide.</p>
+
+          <div class="method-grid" id="methodGrid">
+            <button class="method" data-m="tailscale">
+              <b>Tailscale</b>
+              <span>Reseau prive chiffre. Tes potes installent Tailscale et rejoignent ton reseau. Rien n'est publie sur Internet.</span>
+              <i class="method-state" id="stTs">--</i>
+            </button>
+            <button class="method" data-m="cloudflare">
+              <b>Tunnel Cloudflare</b>
+              <span>Une adresse https publique, tes potes n'installent rien. L'adresse est ouverte a tous : seule la cle API protege.</span>
+              <i class="method-state" id="stCf">--</i>
+            </button>
+            <button class="method" data-m="manual">
+              <b>Redirection de port</b>
+              <span>Tu ouvres le port sur ta box toi-meme. A toi de gerer l'adresse et le renouvellement de l'IP.</span>
+              <i class="method-state">manuel</i>
+            </button>
+          </div>
+
+          <!-- tailscale -->
+          <div class="method-panel" id="panelTailscale" hidden>
+            <div class="kv"><span>etat</span><b id="tsState">--</b></div>
+            <div class="kv"><span>adresse de cette machine</span><b class="mono" id="tsIp">--</b></div>
+            <div class="kv"><span>appareils connectes</span><b id="tsPeers">--</b></div>
+            <ol class="steps">
+              <li>Sur cette machine : ouvre Tailscale et connecte-toi.</li>
+              <li>Sur <code>login.tailscale.com</code>, onglet Users, invite tes potes par mail.</li>
+              <li>Ils installent Tailscale, acceptent l'invitation, et utilisent l'adresse <b class="mono" id="tsUrl">--</b> avec leur cle.</li>
+            </ol>
+            <p class="help">Cette adresse marche de partout, chiffree de bout en bout, sans rien ouvrir sur ta box.</p>
+          </div>
+
+          <!-- cloudflare -->
+          <div class="method-panel" id="panelCloudflare" hidden>
+            <div class="row-actions">
+              <button class="btn" id="cfInstall">Installer cloudflared</button>
+              <button class="btn primary" id="cfStart">Ouvrir le tunnel</button>
+              <button class="btn danger" id="cfStop">Fermer le tunnel</button>
+              <span class="hint" id="cfHint"></span>
+            </div>
+            <div class="public-url" id="cfUrlBox" hidden>
+              <span class="lbl">adresse publique</span>
+              <code class="mono" id="cfUrl"></code>
+              <button class="mini" id="cfCopy">copier</button>
+            </div>
+            <pre class="console small" id="cfLog"></pre>
+            <p class="help">Le telechargement vient de github.com/cloudflare/cloudflared, environ 70 Mo. L'adresse change a chaque ouverture du tunnel : il faut la redonner a tes potes.</p>
+          </div>
+
+          <!-- manuel -->
+          <div class="method-panel" id="panelManual" hidden>
+            <label class="field-lite">Adresse publique a partager
+              <input class="inp mono" id="manualUrl" placeholder="http://mon-ip-publique:3939" spellcheck="false">
+            </label>
+            <button class="btn" id="manualSave">Enregistrer</button>
+            <p class="help">Redirige le port <b id="manualPort">3939</b> de ta box vers cette machine. Sans HTTPS, les cles circulent en clair : evite si tu peux.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- toutes les cles -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Toutes les cles</h2>
+          <div class="row-actions">
+            <button class="mini" id="adminNewKey">creer une cle</button>
+            <button class="mini" id="adminSuspendAll">tout suspendre</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="adminKeyTable">
+            <thead><tr><th>nom</th><th>cle</th><th class="mid">distant</th><th>solde</th><th>aujourd'hui</th><th class="num">depuis le debut</th><th class="num">consomme</th><th>vue</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- avis recus depuis le portail -->
+      <div class="panel">
+        <div class="panel-head"><h2>Ce qu&#39;ils en disent</h2><span class="hint" id="rateHint"></span></div>
+        <div class="pad" id="ratePanel"></div>
+      </div>
+    </section>
+
+    <!-- ===================== page reglages ===================== -->
+    <section class="page" data-page="settings" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Reglages</h1>
+          <p class="sub">Tout ce qui se regle une fois et ne bouge plus.</p>
+        </div>
+      </div>
+
+      <!-- ---------- emplacement et ports ---------- -->
+      <div class="panel">
+        <div class="panel-head"><h2>Emplacement et ports</h2></div>
+        <div class="form" id="formConfig">
+          <label class="wide">Fichier models.json
+            <input class="inp mono" name="modelsJson" spellcheck="false">
+          </label>
+          <label>Port de la console<input class="inp mono" name="port" type="number" min="1" max="65535"></label>
+          <label>Port interne de llama-server<input class="inp mono" name="upstreamPort" type="number" min="1" max="65535"></label>
+          <label>Reserve VRAM (Mo)<input class="inp mono" name="reserveMb" type="number" min="0" max="32768"></label>
+          <label>Dechargement automatique (min)<input class="inp mono" name="idleUnloadMin" type="number" min="0" max="1440"></label>
+          <label class="wide">Mot de passe admin
+            <input class="inp" name="adminPassword" type="password" placeholder="vide = console accessible seulement depuis cette machine" autocomplete="new-password">
+          </label>
+          <div class="form-actions"><button class="btn primary" id="saveConfig">Enregistrer</button><span class="hint" id="cfgHint"></span></div>
+        </div>
+        <div class="pad-x">
+          <details class="note">
+            <summary>ce que font ces champs</summary>
+            <ul>
+              <li><b>Reserve VRAM</b> - la marge laissee libre sur la carte, jamais comptee comme disponible.</li>
+              <li><b>Dechargement automatique</b> - <span id="idleWhy">0 = jamais.</span></li>
+              <li><b>Mot de passe admin</b> - vide, la console ne repond qu&#39;a cette machine et le reseau n&#39;a que l&#39;API par cle. Rempli, tu peux la piloter depuis un telephone.</li>
+              <li><b>Changer un port</b> demande de relancer la console.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+
+      <!-- ---------- chargement a la demande ---------- -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Chargement a la demande</h2>
+          <label class="switch">
+            <input type="checkbox" id="alOn">
+            <span class="track"><span class="knob"></span></span>
+            <span class="switch-lbl" id="alLbl">actif</span>
+          </label>
+        </div>
+        <div class="pad">
+          <p class="help">Le modele demande par son nom est celui qui sert : la console le charge si besoin.</p>
+          <div class="opt-list">
+            <label class="check"><input type="checkbox" id="alSwap"> remplacer un modele qui ne sert plus personne</label>
+          </div>
+          <div class="row-actions pricing-head">
+            <label class="field-lite inline">Calme avant remplacement (s)
+              <input class="inp mono small" id="alIdle" type="number" min="0" max="3600">
+            </label>
+            <label class="field-lite inline">Attente maximale (s)
+              <input class="inp mono small" id="alWait" type="number" min="10" max="900">
+            </label>
+            <button class="btn" id="alSave">Enregistrer</button>
+            <span class="hint" id="alHint"></span>
+          </div>
+          <details class="note">
+            <summary>pourquoi ces deux delais</summary>
+            <p>Le <b>calme</b> evite les allers-retours quand deux personnes demandent chacune leur modele : celui qui vient de servir n&#39;est pas remplace tout de suite. L&#39;<b>attente maximale</b> est le temps qu&#39;une requete accepte de patienter pendant un chargement avant de repartir en erreur.</p>
+            <p>Un nom inconnu du catalogue (<code class="mono">local-model</code>, <code class="mono">gpt-4</code>) retombe sur le modele en service. Sans remplacement automatique, un client qui demande autre chose recoit une erreur nommant celui qui tourne.</p>
+          </details>
+        </div>
+      </div>
+
+      <!-- ---------- cache de prompt ---------- -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Cache de prompt</h2>
+          <span class="hint" id="cramState">--</span>
+        </div>
+        <div class="pad">
+          <p class="help">Memoire <b>systeme</b> — pas de VRAM — ou llama.cpp garde l&#39;etat des conversations qu&#39;un agent vient de quitter, pour ne pas les reprofiler quand elles reviennent.</p>
+          <div class="row-actions pricing-head">
+            <label class="field-lite inline">Mo de RAM
+              <input class="inp mono small" id="cramValue" type="number" min="0" max="32768" step="512">
+            </label>
+            <button class="btn" id="cramSession">Pour cette session</button>
+            <button class="btn primary" id="cramDefault">Enregistrer comme defaut</button>
+            <button class="mini" id="cramReset" hidden>revenir au defaut</button>
+            <span class="hint" id="cramHint"></span>
+          </div>
+          <ul class="cram-lines" id="cramLines"></ul>
+          <details class="note">
+            <summary>session ou defaut, et quand ca prend effet</summary>
+            <ul>
+              <li><b>Pour cette session</b> : la valeur s&#39;applique a tous les chargements jusqu&#39;a la fermeture de la console, et disparait avec elle. Rien n&#39;est ecrit sur le disque.</li>
+              <li><b>Comme defaut</b> : ecrit dans <code class="mono">models.json</code>, sous <code class="mono">defaults.cache_ram_mb</code>. Survit a tout.</li>
+              <li>Le drapeau part <b>au lancement</b> : un modele deja charge garde le reglage avec lequel il est parti. Il faut le relancer pour changer.</li>
+              <li>Un modele peut avoir sa propre valeur, reglee dans son tiroir. Une valeur de session l&#39;emporte sur tout le reste.</li>
+              <li><code class="mono">0</code> coupe le cache : un agent qui change de conversation perd l&#39;etat de la precedente.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+
+      <!-- ---------- echantillonnage ---------- -->
+      <div class="panel">
+        <div class="panel-head"><h2>Echantillonnage</h2><span class="hint">temperature et compagnie</span></div>
+        <div class="pad">
+          <p class="help">Chaque modele a ses valeurs, reglees dans son tiroir. Reste a savoir qui gagne quand un client envoie les siennes — et opencode envoie les siennes.</p>
+          <div class="role-pick" id="samplingPick">
+            <label><input type="radio" name="samplingMode" value="fill" checked>
+              <b>Completer</b><span>on ne pose que ce que le client n&#39;a pas precise. Son choix explicite est respecte.</span></label>
+            <label><input type="radio" name="samplingMode" value="force">
+              <b>Imposer</b><span>le reglage du modele l&#39;emporte, meme sur ce que le client demande. La seule facon de garantir la temperature de l&#39;auteur.</span></label>
+            <label><input type="radio" name="samplingMode" value="off">
+              <b>Ne rien faire</b><span>la passerelle ne touche pas aux requetes ; seuls les drapeaux du lancement s&#39;appliquent, et un client bavard les ecrase.</span></label>
+          </div>
+          <span class="hint" id="samplingHint"></span>
+        </div>
+      </div>
+
+      <!-- ---------- partage des agents ---------- -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Partage des agents</h2>
+          <label class="switch">
+            <input type="checkbox" id="ovOn">
+            <span class="track"><span class="knob"></span></span>
+            <span class="switch-lbl" id="ovLbl">actif</span>
+          </label>
+        </div>
+        <div class="pad">
+          <p class="help">Quand tous les agents travaillent, les requetes suivantes s&#39;empilent dans llama.cpp <b>sans que personne ne le sache</b>. La console refuse alors proprement, avec un chiffre et un delai que les clients savent lire.</p>
+          <div class="row-actions pricing-head">
+            <label class="field-lite inline">Requetes en attente tolerees, par agent
+              <input class="inp mono small" id="ovQueue" type="number" min="0" max="20">
+            </label>
+            <button class="btn" id="ovSave">Enregistrer</button>
+            <span class="hint" id="ovHint"></span>
+          </div>
+          <ul class="cram-lines" id="ovLines"></ul>
+          <details class="note">
+            <summary>combien d&#39;agents par cle, et ce qui se passe au-dela</summary>
+            <ul>
+              <li><b>Administrateur</b> : autant d&#39;agents qu&#39;il veut.</li>
+              <li><b>De confiance</b> : deux agents a la fois quand le modele en offre plus de deux, sinon un.</li>
+              <li><b>Utilisateur</b> : un agent a la fois.</li>
+              <li>Au-dela, la reponse est un <code class="mono">429</code> avec un en-tete <code class="mono">Retry-After</code> : opencode et la plupart des clients reessaient tout seuls. Le message dit combien d&#39;agents sont pris et combien de temps ca devrait durer, d&#39;apres la duree mediane des dernieres reponses.</li>
+              <li>Chaque reponse porte l&#39;etat de la maison : <code class="mono">x-agents-busy</code>, <code class="mono">x-queue-depth</code>, <code class="mono">x-key-slots</code>.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+
+      <!-- ---------- question du moment ---------- -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Poser une question</h2>
+          <label class="switch">
+            <input type="checkbox" id="pollOn">
+            <span class="track"><span class="knob"></span></span>
+            <span class="switch-lbl" id="pollLbl">inactive</span>
+          </label>
+        </div>
+        <div class="pad">
+          <p class="help">Elle apparait dans le portail, une fois par personne. Change la question et c&#39;est un nouveau sondage : tout le monde est re-interroge.</p>
+
+          <div class="poll-form">
+            <label class="field-lite wide">Ta question
+              <input class="inp" id="pollQ" maxlength="200" placeholder="Le contexte de 32k vous suffit ?">
+            </label>
+
+            <div class="poll-answers">
+              <span class="lbl">Reponses proposees <i>facultatif — sans elles, ce sera du texte libre</i></span>
+              <div class="poll-opts">
+                <input class="inp" data-o="0" maxlength="60" placeholder="oui">
+                <input class="inp" data-o="1" maxlength="60" placeholder="non">
+                <input class="inp" data-o="2" maxlength="60" placeholder="troisieme reponse">
+                <input class="inp" data-o="3" maxlength="60" placeholder="quatrieme reponse">
+              </div>
+            </div>
+
+            <div class="poll-foot">
+              <label class="check"><input type="checkbox" id="pollText" checked> laisser ajouter un mot en plus du choix</label>
+              <span class="hint" id="pollHint"></span>
+              <button class="btn primary" id="pollSave">Enregistrer</button>
+            </div>
+          </div>
+
+          <div id="pollResults"></div>
+        </div>
+      </div>
+
+      <!-- ---------- espace utilisateur ---------- -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Espace utilisateur</h2>
+          <label class="switch">
+            <input type="checkbox" id="portalOn">
+            <span class="track"><span class="knob"></span></span>
+            <span class="switch-lbl" id="portalLbl">actif</span>
+          </label>
+        </div>
+        <div class="pad">
+          <div class="public-url">
+            <span class="lbl">adresse a donner</span>
+            <code class="mono" id="portalUrl">--</code>
+            <button class="mini" id="portalCopy">copier</button>
+            <button class="mini" id="portalOpen">ouvrir</button>
+          </div>
+          <p class="help">Les droits ne se reglent pas ici : ils sont portes par chaque cle.
+            Une cle <b>utilisateur</b> se sert du modele charge, une cle <b>de confiance</b> peut
+            aussi en demander un autre, une cle <b>administrateur</b> peut deborder hors du GPU.
+            <button class="linkish" id="portalToKeys">gerer les cles</button></p>
+          <div class="opt-list">
+            <label class="check dim"><input type="checkbox" id="portalTopup" disabled> ajouter des fonds soi-meme <span class="muted">- non implemente</span></label>
+          </div>
+          <details class="note">
+            <summary>ce que le portail autorise, selon la cle</summary>
+            <ul>
+              <li>Aucun deport hors GPU tant que la cle n&#39;est pas administratrice : ce qui ne tient pas dans la VRAM libre est refuse, ici comme sur l&#39;API.</li>
+              <li>Une cle de confiance regle agents et contexte, avec l&#39;estimation VRAM en direct ; le serveur refait le calcul avant de lancer.</li>
+              <li>L&#39;arret et le remplacement sont refuses tant qu&#39;un agent travaille : personne ne perd sa reponse en cours.</li>
+              <li>Les fonds passent uniquement par les enveloppes attribuees aux cles.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+
+      <!-- ---------- defauts ---------- -->
+      <div class="panel">
+        <div class="panel-head"><h2>Defauts de lancement</h2><span class="hint">partages avec LLAMA.bat</span></div>
+        <div class="form" id="formDefaults">
+          <label>Couches GPU (-ngl)<input class="inp mono" name="gpu_layers" type="number"></label>
+          <label>Batch (-b)<input class="inp mono" name="batch" type="number"></label>
+          <label>Micro-batch (-ub)<input class="inp mono" name="ubatch" type="number"></label>
+          <label>Cache de prompt (Mo de RAM)<input class="inp mono" name="cache_ram_mb" type="number" min="0" max="32768" step="512"></label>
+          <label>Reutilisation par morceaux<input class="inp mono" name="cache_reuse" type="number" min="0" max="8192" step="64"></label>
+          <div class="form-actions"><button class="btn primary" id="saveDefaults">Enregistrer</button><span class="hint" id="defHint"></span></div>
+        </div>
+        <div class="pad-x">
+          <details class="note">
+            <summary>le cache de prompt, en clair</summary>
+            <p>Dans une conversation, chaque tour renvoie tout ce qui precede. llama.cpp reconnait le debut commun et ne recalcule que la suite : c'est gratuit et toujours actif. Le <b>cache de prompt</b> va plus loin - quand un agent change de conversation, son etat est recopie en RAM systeme au lieu d'etre jete, et revient sans etre recalcule.</p>
+            <p>Ca n'accelere pas la generation d'un seul token. Ca supprime des attentes avant le premier. Un etat pese le contexte d'un agent : chez toi, de quelques dizaines de Mo a plus de 3 Go selon le modele - le tiroir de lancement le chiffre pour chacun. <code class="mono">0</code> coupe le cache.</p>
+            <p>La <b>reutilisation par morceaux</b> (<code class="mono">--cache-reuse</code>) rattrape une divergence <i>au milieu</i> du prompt en decalant le cache. Utile quand un outil reecrit un bloc en tete de contexte. <code class="mono">0</code> = inactive ; 256 est une valeur de depart raisonnable, a essayer modele par modele car ce decalage n'est pas valable partout.</p>
+          </details>
+        </div>
+      </div>
+
+      <!-- ---------- securite ---------- -->
+      <div class="panel">
+        <div class="panel-head"><h2>Securite</h2><span class="hint">etat actuel</span></div>
+        <ul class="notes" id="secNotes"></ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== panneau de lancement ===================== -->
+<div class="drawer-back" id="drawerBack" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Configurer le lancement">
+  <div class="drawer-head">
+    <div>
+      <span class="eyebrow">configurer et lancer</span>
+      <h2 id="dName">--</h2>
+      <p class="path mono" id="dPath"></p>
+    </div>
+    <button class="icon-btn" id="dClose" aria-label="Fermer">&times;</button>
+  </div>
+
+  <div class="drawer-body">
+    <div class="field">
+      <div class="field-head"><label for="dSlots">Agents en parallele</label><output class="val mono" id="dSlotsVal">1</output></div>
+      <input type="range" id="dSlots" min="1" max="16" step="1">
+      <p class="help">Chaque agent est un emplacement de conversation independant. Deux personnes qui discutent en meme temps occupent deux agents.</p>
+    </div>
+
+    <div class="field" id="ctxField">
+      <div class="field-head"><label for="dCtx">Contexte par agent</label><output class="val mono" id="dCtxVal">--</output></div>
+      <input type="range" id="dCtx" min="0" max="10" step="1">
+      <div class="ctx-line">
+        <input class="inp mono small" id="dCtxNum" type="number" min="-1" step="1024" title="-1 = laisser llama.cpp decider">
+        <span class="hint" id="dCtxTotal">total --</span>
+      </div>
+      <p class="help" id="dRope"></p>
+    </div>
+
+    <div class="presets" id="dPresets"></div>
+
+    <div class="estimate">
+      <div class="estimate-head">
+        <span>VRAM estimee</span>
+        <strong class="mono" id="eTotal">--</strong>
+      </div>
+      <div class="vram-bar big">
+        <div class="seg seg-w"  id="eW"></div>
+        <div class="seg seg-kv" id="eKv"></div>
+        <div class="seg seg-c"  id="eC"></div>
+        <div class="seg seg-unknown" id="eU"></div>
+      </div>
+      <div class="legend">
+        <span><i class="sw sw-w"></i>poids <b class="mono" id="eWv">--</b></span>
+        <span><i class="sw sw-kv"></i>cache KV <b class="mono" id="eKvv">--</b></span>
+        <span><i class="sw sw-c"></i>calcul <b class="mono" id="eCv">--</b></span>
+      </div>
+      <p class="warn" id="eWarn" hidden></p>
+    </div>
+
+    <details class="adv">
+      <summary>Options avancees</summary>
+      <div class="adv-grid">
+        <label>Cache KV
+          <select class="inp" id="dCache">
+            <option value="q4_0">q4_0 - le plus compact</option>
+            <option value="q5_0">q5_0 - +22 % de VRAM</option>
+            <option value="q8_0">q8_0 - +89 % de VRAM</option>
+            <option value="f16">f16 - sans perte, 3,5x</option>
+          </select>
+        </label>
+        <label id="dVisionWrap">Vision
+          <select class="inp" id="dVision">
+            <option value="1">GPU - rapide</option>
+            <option value="2">CPU - 0 Mo de VRAM</option>
+            <option value="0">desactivee (--no-mmproj)</option>
+          </select>
+        </label>
+        <label id="dMtpWrap">Draft speculatif
+          <select class="inp" id="dMtp"><option value="1">actif</option><option value="0">inactif</option></select>
+        </label>
+        <label id="dDraftNWrap">Profondeur du draft
+          <input class="inp mono" id="dDraftN" type="number" min="1" max="8">
+        </label>
+        <label>Couches GPU<input class="inp mono" id="dNgl" type="number" min="0" max="999"></label>
+        <label>Batch<input class="inp mono" id="dBatch" type="number" min="32"></label>
+        <label>Micro-batch<input class="inp mono" id="dUbatch" type="number" min="32"></label>
+        <label>Cache de prompt (Mo de RAM)<input class="inp mono" id="dCram" type="number" min="0" max="32768" step="512"></label>
+        <label>Reutilisation par morceaux<input class="inp mono" id="dReuse" type="number" min="0" max="8192" step="64"></label>
+        <label class="wide">Arguments supplementaires<input class="inp mono" id="dExtra" spellcheck="false" placeholder="--reasoning auto"></label>
+        <p class="help wide" id="dCacheWhy"></p>
+      </div>
+    </details>
+
+    <details class="drawer-adv">
+      <summary>Echantillonnage <span id="dEchSum"></span></summary>
+      <div class="grid-2">
+        <label>Temperature<input class="inp mono" id="dTemp" type="number" step="0.05" min="0" max="2" placeholder="moteur"></label>
+        <label>top_p<input class="inp mono" id="dTopP" type="number" step="0.01" min="0" max="1" placeholder="moteur"></label>
+        <label>top_k<input class="inp mono" id="dTopK" type="number" step="1" min="0" max="500" placeholder="moteur"></label>
+        <label>min_p<input class="inp mono" id="dMinP" type="number" step="0.01" min="0" max="1" placeholder="moteur"></label>
+        <label>presence_penalty<input class="inp mono" id="dPres" type="number" step="0.1" min="0" max="2" placeholder="moteur"></label>
+        <label>repeat_penalty<input class="inp mono" id="dRep" type="number" step="0.01" min="0" max="2" placeholder="moteur"></label>
+        <label class="wide">Ordre des samplers<input class="inp mono" id="dSamplers" spellcheck="false" placeholder="temperature;top_p;top_k"></label>
+        <p class="help wide">Ces valeurs partent en drapeaux au lancement <b>et</b> sont posees dans chaque requete : un client qui envoie sa propre temperature ecraserait le drapeau, c'est un comportement connu de llama.cpp. Le mode se choisit dans <b>Reglages &gt; Echantillonnage</b>. Un champ vide laisse le defaut du moteur.</p>
+      </div>
+    </details>
+
+    <details class="drawer-adv">
+      <summary>Reflexion <span id="dThinkSum"></span></summary>
+      <div class="grid-2">
+        <label>Mode
+          <select class="inp" id="dThinkMode">
+            <option value="">defaut du gabarit</option>
+            <option value="auto">auto</option>
+            <option value="on">toujours</option>
+            <option value="off">jamais</option>
+          </select>
+        </label>
+        <label>Budget de reflexion
+          <input class="inp mono" id="dThinkBudget" type="number" min="-1" placeholder="-1 = illimite">
+        </label>
+        <label>Restitution
+          <select class="inp" id="dThinkFormat">
+            <option value="">auto</option>
+            <option value="deepseek">reasoning_content (opencode)</option>
+            <option value="deepseek-legacy">balises + reasoning_content</option>
+            <option value="none">tout dans le texte</option>
+          </select>
+        </label>
+        <label>Variables du gabarit
+          <input class="inp mono" id="dThinkKwargs" spellcheck="false" placeholder="reasoning_strength=high">
+        </label>
+        <label class="check"><input type="checkbox" id="dThinkPreserve"> garder la trace de reflexion dans tout l&#39;historique</label>
+        <div class="think-levels wide" id="dThinkLevels" hidden></div>
+        <p class="help wide" id="dThinkWhy"></p>
+      </div>
+    </details>
+
+    <pre class="snippet mono small" id="dCmd"></pre>
+    <button class="mini" id="dSaveDefault" title="agents, contexte, cache KV, vision, draft, couches GPU, batch et arguments">enregistrer tout ce panneau comme defaut de ce modele</button>
+  </div>
+
+  <div class="drawer-foot">
+    <span class="hint" id="dErr"></span>
+    <span class="hint swap" id="dSwap" hidden></span>
+    <button class="btn primary big" id="dLaunch">Lancer le modele</button>
+  </div>
+</aside>
+
+<!-- ===================== modale cle : creation et limites ===================== -->
+<div class="modal-back" id="modalBack" hidden>
+  <div class="modal large" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Creer une cle</h2>
+    <label class="field-lite">Pour qui ?<input class="inp" id="kName" placeholder="Portable de Luc" maxlength="60"></label>
+
+    <div class="lim-block">
+      <div class="lim-title">Droits <span>ce que cette cle peut demander au serveur</span></div>
+      <div class="role-pick" id="kRolePick">
+        <label><input type="radio" name="kRole" value="user" checked>
+          <b>Utilisateur</b><span>se sert du modele deja charge, et rien d&#39;autre</span></label>
+        <label><input type="radio" name="kRole" value="trusted">
+          <b>De confiance</b><span>peut aussi charger, remplacer et arreter un modele, en reglant agents et contexte</span></label>
+        <label><input type="radio" name="kRole" value="admin">
+          <b>Administrateur</b><span>tout, y compris charger un modele trop gros en le deportant hors du GPU</span></label>
+      </div>
+    </div>
+
+    <div class="lim-block">
+      <div class="lim-title">Enveloppe <span>epuisee, la cle ne repond plus</span></div>
+      <div class="lim-grid">
+        <label class="field-lite"><span>Credit en <b id="kCur">$</b></span>
+          <input class="inp mono" id="kCredit" type="number" min="0" step="0.01" placeholder="0 = illimite">
+        </label>
+        <label class="field-lite">Tokens au total
+          <input class="inp mono" id="kTokTotal" type="number" min="0" step="1000" placeholder="0 = illimite">
+        </label>
+      </div>
+    </div>
+
+    <div class="lim-block">
+      <div class="lim-title">Par jour <span>remis a zero a minuit</span></div>
+      <div class="lim-grid three">
+        <label class="field-lite">Requetes
+          <input class="inp mono" id="kReqDay" type="number" min="0" placeholder="0">
+        </label>
+        <label class="field-lite">Tokens
+          <input class="inp mono" id="kTokDay" type="number" min="0" step="1000" placeholder="0">
+        </label>
+        <label class="field-lite"><span>Depense en <b class="kCur">$</b></span>
+          <input class="inp mono" id="kCostDay" type="number" min="0" step="0.01" placeholder="0">
+        </label>
+      </div>
+    </div>
+
+    <label class="check"><input type="checkbox" id="kRemote" checked> utilisable hors du reseau local</label>
+    <label class="check" id="kResetWrap" hidden><input type="checkbox" id="kReset"> remettre la consommation de cette cle a zero</label>
+
+    <p class="help">Un zero veut dire « pas de limite ». Le controle a lieu avant chaque requete : celle qui est deja partie va au bout, le depassement est donc de l'ordre d'une reponse.</p>
+
+    <div class="modal-foot">
+      <button class="btn ghost" id="kCancel">Annuler</button>
+      <button class="btn primary" id="kCreate">Creer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== confirmation ===================== -->
+<div class="modal-back" id="confirmBack" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Confirmer</h2>
+    <div class="confirm-body" id="confirmBody"></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="confirmNo">Annuler</button>
+      <button class="btn primary" id="confirmYes">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== connexion depuis le reseau ===================== -->
+<div class="login-back" id="loginBack" hidden>
+  <form class="login" id="loginForm">
+    <h1>Console llama.cpp</h1>
+    <p>Saisis le mot de passe admin pour piloter le serveur depuis cet appareil.</p>
+    <input class="inp" id="loginPass" type="password" placeholder="mot de passe" autocomplete="current-password">
+    <button class="btn primary" type="submit">Se connecter</button>
+    <div class="err" id="loginErr"></div>
+  </form>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

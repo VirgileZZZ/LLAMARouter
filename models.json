@@ -1,0 +1,456 @@
+{
+  "_comment": "CATALOGUE D EXEMPLE - aucun de ces modeles n existe, remplace-les par les tiens.\n\nChamps obligatoires : id, name, bin, model, native_ctx, kv_kb_token, ctx.\n  bin          dossier qui contient llama-server.exe (il est par modele :\n               deux modeles peuvent utiliser deux builds differents).\n  model        chemin du .gguf.\n  native_ctx   fenetre de contexte native du modele ; au-dela, la console\n               ajoute le rope yarn toute seule.\n  kv_kb_token  cout du cache KV en Ko par token a q4_0. Sert a estimer la\n               VRAM avant de lancer. La touche K du menu le recalibre.\n  ctx          contexte reellement utilise, par agent x slots.\n\nChamps utiles : mmproj + vision_mode pour les images, draft + spec_type +\nspec_n pour le decodage speculatif, mtp_builtin quand la tete MTP est deja\ndans le fichier, lora pour un adaptateur, family / family_name pour\nregrouper les variantes d un meme reseau, note pour un pense-bete.\n\nprice_in / price_out : USD par million de tokens. Sert a facturer les cles\net a chiffrer ce que la meme conversation aurait coute chez un fournisseur.\n\nsampling : les valeurs recommandees par l auteur du modele. Selon le mode\nchoisi dans Reglages, elles completent ce que le client envoie (fill), le\nremplacent (force), ou sont ignorees (off).\n\nthinking : format = valeur de --reasoning-format ; budget = plafond de\njetons de reflexion ; preserve = --reasoning-preserve ; kwargs = reglage\npar defaut ; levels = les niveaux proposes au client, qu opencode reprend\ncomme variantes.",
+  "defaults": {
+    "port": 8080,
+    "gpu_layers": 99,
+    "reserve_mb": 512,
+    "batch": 2048,
+    "ubatch": 512,
+    "api_key": ""
+  },
+  "models": [
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "D:\\IA\\modeles\\Demo-27B-GGUF\\mmproj-BF16.gguf",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 1,
+      "ctx_auto": false,
+      "vision_mode": 1,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-27b",
+      "name": "Demo 27B - Q4_K_M",
+      "model": "D:\\IA\\modeles\\Demo-27B-GGUF\\Demo-27B-Q4_K_M.gguf",
+      "native_ctx": 262144,
+      "kv_kb_token": 18,
+      "ctx": 105000,
+      "price_in": 0.2,
+      "price_out": 0.4,
+      "note": "natif 262144 ; le contexte reel est plafonne a 105000 pour tenir en VRAM",
+      "sampling": {
+        "temp": 0.6,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0,
+        "presence_penalty": 0,
+        "repeat_penalty": 1
+      },
+      "thinking": {
+        "format": "deepseek",
+        "levels": [
+          {
+            "name": "off",
+            "label": "coupee",
+            "kwargs": {
+              "enable_thinking": false
+            }
+          },
+          {
+            "name": "on",
+            "label": "activee",
+            "kwargs": {
+              "enable_thinking": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 1,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-27b-leger",
+      "name": "Demo 27B - IQ3_M (plus petit, plus rapide)",
+      "family": "demo-27b",
+      "model": "D:\\IA\\modeles\\Demo-27B-GGUF\\Demo-27B-IQ3_M.gguf",
+      "native_ctx": 262144,
+      "kv_kb_token": 18,
+      "ctx": 131072,
+      "price_in": 0.15,
+      "price_out": 0.3,
+      "sampling": {
+        "temp": 0.6,
+        "top_p": 0.95,
+        "top_k": 20
+      },
+      "thinking": {
+        "format": "deepseek"
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp-autre-build\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 1,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-27b-branche",
+      "name": "Demo 27B - build experimental",
+      "family": "demo-27b",
+      "model": "D:\\IA\\modeles\\Demo-27B-GGUF\\Demo-27B-Q2_0.gguf",
+      "native_ctx": 262144,
+      "kv_kb_token": 18,
+      "ctx": 131072,
+      "price_in": 0.12,
+      "price_out": 0.24,
+      "note": "architecture geree seulement par ce build",
+      "sampling": {
+        "temp": 0.6,
+        "top_p": 0.95,
+        "top_k": 20
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 4,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-moe-30b",
+      "name": "Demo MoE 30B-A3B - Q4_K_M + MTP inclus",
+      "model": "D:\\IA\\modeles\\Demo-MoE-30B-MTP-GGUF\\Demo-MoE-30B-A3B-Q4_K_M.gguf",
+      "mtp_builtin": true,
+      "native_ctx": 131072,
+      "kv_kb_token": 6,
+      "ctx": 131072,
+      "price_in": 0.25,
+      "price_out": 0.5,
+      "note": "la tete MTP est embarquee : laisser draft vide",
+      "sampling": {
+        "temp": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0,
+        "presence_penalty": 0.5,
+        "repeat_penalty": 1
+      },
+      "thinking": {
+        "format": "deepseek",
+        "levels": [
+          {
+            "name": "off",
+            "label": "coupee",
+            "kwargs": {
+              "enable_thinking": false
+            }
+          },
+          {
+            "name": "on",
+            "label": "activee",
+            "kwargs": {
+              "enable_thinking": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "D:\\IA\\modeles\\Demo-MoE-30B-GGUF\\Demo-brouillon-0.5B-Q4_1.gguf",
+      "lora": "",
+      "spec_type": "draft-dspark",
+      "spec_n": 3,
+      "spec_extra": "--spec-draft-ngl 99 --spec-draft-type-k q4_0 --spec-draft-type-v q4_0",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 2,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": true,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-moe-30b-brouillon",
+      "name": "Demo MoE 30B-A3B + brouillon separe",
+      "family": "demo-moe-30b",
+      "model": "D:\\IA\\modeles\\Demo-MoE-30B-GGUF\\Demo-MoE-30B-A3B-Q4_K_M.gguf",
+      "native_ctx": 131072,
+      "kv_kb_token": 6,
+      "ctx": 65536,
+      "price_in": 0.25,
+      "price_out": 0.5,
+      "sampling": {
+        "temp": 0.7,
+        "top_p": 0.8,
+        "top_k": 20
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 1,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-penseur-24b",
+      "name": "Demo Penseur 24B - Q4_K_M",
+      "model": "D:\\IA\\modeles\\Demo-Penseur-24B-GGUF\\Demo-Penseur-24B-Q4_K_M.gguf",
+      "native_ctx": 131072,
+      "kv_kb_token": 16,
+      "ctx": 65536,
+      "price_in": 0.3,
+      "price_out": 0.6,
+      "cache_ram_mb": 4096,
+      "cache_reuse": 0,
+      "note": "sans budget, ce modele peut passer toute sa reponse a reflechir",
+      "sampling": {
+        "temp": 0.15,
+        "top_p": 1,
+        "top_k": 0,
+        "min_p": 0.01,
+        "repeat_penalty": 1
+      },
+      "thinking": {
+        "format": "deepseek",
+        "preserve": true,
+        "budget": 512,
+        "kwargs": {
+          "reasoning_strength": "low"
+        },
+        "levels": [
+          {
+            "name": "off",
+            "label": "coupee",
+            "kwargs": {
+              "reasoning_strength": "none"
+            }
+          },
+          {
+            "name": "low",
+            "label": "courte",
+            "kwargs": {
+              "reasoning_strength": "low"
+            }
+          },
+          {
+            "name": "medium",
+            "label": "moyenne",
+            "kwargs": {
+              "reasoning_strength": "medium"
+            }
+          },
+          {
+            "name": "high",
+            "label": "longue",
+            "kwargs": {
+              "reasoning_strength": "high"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 8,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-petit-8b",
+      "name": "Demo Petit 8B - Q4_K_M",
+      "model": "D:\\IA\\modeles\\Demo-Petit-8B-GGUF\\Demo-Petit-8B-Q4_K_M.gguf",
+      "native_ctx": 32768,
+      "kv_kb_token": 2,
+      "ctx": 32768,
+      "price_in": 0.05,
+      "price_out": 0.1,
+      "sampling": {
+        "temp": 0.3,
+        "top_p": 0.95,
+        "top_k": 40,
+        "repeat_penalty": 1.05
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "",
+      "draft": "",
+      "lora": "D:\\IA\\modeles\\LoRA\\mon-adaptateur-F16.gguf",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 4,
+      "ctx_auto": false,
+      "vision_mode": 0,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-petit-8b-lora",
+      "name": "Demo Petit 8B + LoRA maison",
+      "family": "demo-petit-8b",
+      "model": "D:\\IA\\modeles\\Demo-Petit-8B-GGUF\\Demo-Petit-8B-Q4_K_M.gguf",
+      "native_ctx": 32768,
+      "kv_kb_token": 2,
+      "ctx": 32768,
+      "price_in": 0.05,
+      "price_out": 0.1,
+      "sampling": {
+        "temp": 0.3,
+        "top_p": 0.95,
+        "top_k": 40
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "D:\\IA\\modeles\\Demo-OCR-GGUF\\mmproj-F16.gguf",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 16,
+      "ctx_auto": false,
+      "vision_mode": 1,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-ocr",
+      "name": "Demo OCR 0.5B - Q6_K",
+      "family": "ocr",
+      "family_name": "OCR",
+      "model": "D:\\IA\\modeles\\Demo-OCR-GGUF\\Demo-OCR-0.5B-Q6_K.gguf",
+      "native_ctx": 131072,
+      "kv_kb_token": 2,
+      "ctx": 8192,
+      "price_in": 0.06,
+      "price_out": 0.12,
+      "note": "le prompt entraine est « OCR: », pas une consigne libre",
+      "sampling": {
+        "temp": 0,
+        "top_p": 1,
+        "repeat_penalty": 1.3
+      }
+    },
+    {
+      "bin": "C:\\llama.cpp\\build\\bin\\Release",
+      "host": "0.0.0.0",
+      "mmproj": "D:\\IA\\modeles\\Demo-OCR-Vision-GGUF\\mmproj-BF16.gguf",
+      "draft": "",
+      "lora": "",
+      "spec_type": "draft-mtp",
+      "spec_n": 2,
+      "spec_extra": "",
+      "swa_mb": 0,
+      "cache": "q4_0",
+      "slots": 8,
+      "ctx_auto": false,
+      "vision_mode": 1,
+      "draft_on": false,
+      "gpu_layers": 99,
+      "batch": 2048,
+      "ubatch": 512,
+      "ui_extra_args": "",
+      "extra_args": "",
+      "id": "demo-ocr-vision",
+      "name": "Demo OCR Vision 2B - Q6_K",
+      "family": "ocr",
+      "family_name": "OCR",
+      "model": "D:\\IA\\modeles\\Demo-OCR-Vision-GGUF\\Demo-OCR-Vision-2B-Q6_K.gguf",
+      "native_ctx": 32768,
+      "kv_kb_token": 3,
+      "ctx": 32768,
+      "price_in": 0.08,
+      "price_out": 0.16,
+      "sampling": {
+        "temp": 0,
+        "top_p": 1
+      }
+    }
+  ]
+}

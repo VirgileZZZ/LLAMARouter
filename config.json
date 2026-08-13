@@ -1,0 +1,49 @@
+{
+  "port": 3939,
+  "upstreamHost": "127.0.0.1",
+  "upstreamPort": 8080,
+  "adminPassword": "",
+  "reserveMb": 300,
+  "autoStartLast": false,
+  "remote": {
+    "enabled": false,
+    "method": "off",
+    "publicUrl": ""
+  },
+  "pricing": {
+    "enabled": true,
+    "currency": "USD",
+    "defaultIn": 0.1,
+    "defaultOut": 0.3,
+    "cacheRatio": 0.1,
+    "kwhPrice": 0.215,
+    "kwhCurrency": "EUR",
+    "reportCost": true
+  },
+  "overload": {
+    "enabled": true,
+    "queuePerSlot": 1
+  },
+  "sampling": {
+    "mode": "fill"
+  },
+  "idleUnloadMin": 5,
+  "autoLoad": {
+    "enabled": true,
+    "swap": true,
+    "swapIdleS": 20,
+    "waitS": 180
+  },
+  "poll": {
+    "id": 0,
+    "active": false,
+    "question": "",
+    "options": [],
+    "allowText": true
+  },
+  "portal": {
+    "enabled": true,
+    "topupEnabled": false,
+    "launchCooldownS": 60
+  }
+}

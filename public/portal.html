@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon acces - console llama.cpp</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23141826'/><g fill='none' stroke='%23525e77' stroke-width='1.6' stroke-linecap='round'><path d='M11.6 16C15 16 15.2 10.6 18.6 10.6'/><path d='M11.6 16h7'/><path d='M11.6 16C15 16 15.2 21.4 18.6 21.4'/></g><rect x='6.4' y='9' width='3.6' height='14' rx='1.8' fill='%238b7cff'/><rect x='18.6' y='9.3' width='7' height='2.7' rx='1.35' fill='%2345c8c0'/><rect x='18.6' y='14.65' width='7' height='2.7' rx='1.35' fill='%238b7cff'/><rect x='18.6' y='20' width='7' height='2.7' rx='1.35' fill='%23f0b03c'/></svg>">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="portal-body">
+
+<header class="topbar portal-top">
+  <div class="brand">
+    <svg class="brand-mark" id="brandMark" viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <linearGradient id="bmField" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1c2130"/>
+          <stop offset="1" stop-color="#0d0f15"/>
+        </linearGradient>
+      </defs>
+      <rect x=".75" y=".75" width="30.5" height="30.5" rx="9" fill="url(#bmField)" stroke="#2b3243" stroke-width="1.5"/>
+      <g fill="none" stroke="#525e77" stroke-width="1.6" stroke-linecap="round">
+        <path d="M11.6 16C15 16 15.2 10.6 18.6 10.6"/>
+        <path d="M11.6 16h7"/>
+        <path d="M11.6 16C15 16 15.2 21.4 18.6 21.4"/>
+      </g>
+      <rect x="6.4" y="9" width="3.6" height="14" rx="1.8" fill="#8b7cff"/>
+      <g class="bm-agents">
+        <rect x="18.6" y="9.3" width="7" height="2.7" rx="1.35" fill="#45c8c0"/>
+        <rect x="18.6" y="14.65" width="7" height="2.7" rx="1.35" fill="#8b7cff"/>
+        <rect x="18.6" y="20" width="7" height="2.7" rx="1.35" fill="#f0b03c"/>
+      </g>
+    </svg>
+    <span class="brand-text">mon<b>acces</b></span>
+  </div>
+  <div class="portal-who" id="who" hidden>
+    <span class="portal-name" id="whoName">--</span>
+    <span class="portal-role" id="whoRole"></span>
+    <span class="portal-tail mono" id="whoTail"></span>
+    <button class="mini" id="signOut">changer de cle</button>
+  </div>
+</header>
+
+<!-- ===================== saisie de la cle ===================== -->
+<section class="gate" id="gate" hidden>
+  <form class="gate-card" id="gateForm">
+    <h1>Ton acces au modele</h1>
+    <p>Colle la cle API qu'on t'a donnee. Elle reste sur cet appareil, dans ce navigateur, et n'est envoyee qu'a cette console.</p>
+    <input class="inp mono" id="gateKey" placeholder="sk-llama-..." autocomplete="off" spellcheck="false">
+    <button class="btn primary big" type="submit">Voir ma consommation</button>
+    <div class="err" id="gateErr"></div>
+  </form>
+</section>
+
+<!-- ===================== tableau de bord ===================== -->
+<main class="portal" id="board" hidden>
+
+  <div class="portal-grid">
+
+    <!-- solde -->
+    <section class="panel balance" id="balancePanel">
+      <div class="panel-head">
+        <h2>Solde</h2>
+        <span class="hint" id="balanceKind">--</span>
+      </div>
+      <div class="pad">
+        <div class="balance-main">
+          <strong class="balance-v" id="balanceV">--</strong>
+          <span class="balance-sub" id="balanceSub"></span>
+        </div>
+        <div class="meter"><i id="balanceBar"></i></div>
+        <div class="meter-ends"><span id="balanceUsed">--</span><span id="balanceCap"></span></div>
+        <div class="topup">
+          <button class="btn" id="btnTopup" disabled>Ajouter des fonds</button>
+          <span class="help" id="topupWhy">Les fonds sont attribues par l'administrateur : demande-lui une recharge.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- consommation -->
+    <section class="panel">
+      <div class="panel-head"><h2>Aujourd'hui</h2><span class="hint" id="dayHint"></span></div>
+      <div class="pad gauges" id="gauges"></div>
+    </section>
+
+    <!-- modele -->
+    <section class="panel wide">
+      <div class="panel-head">
+        <h2>Modele en service</h2>
+        <span class="hint" id="srvHint">--</span>
+      </div>
+      <div class="pad">
+        <div class="srv" id="srv"></div>
+
+        <div class="load-bar" id="loadBar" hidden>
+          <span class="agents" id="loadDots"></span>
+          <span id="loadText">--</span>
+          <span class="load-queue" id="loadQueue" hidden></span>
+          <span class="load-mine" id="loadMine"></span>
+        </div>
+
+        <div class="srv-actions" id="srvActions" hidden>
+          <button class="btn" id="btnFree">Liberer la carte</button>
+          <span class="help" id="freeWhy"></span>
+        </div>
+
+        <div class="ask" id="ask" hidden>
+          <p class="help" id="askHelp">Aucun modele n'est charge. Tu peux en demander un : il sera lance pour tout le monde.</p>
+          <div class="ask-list" id="askList"></div>
+
+          <!-- reglage libre, seulement si l'admin l'a autorise -->
+          <div class="tuner" id="tuner" hidden>
+            <div class="tuner-head">
+              <div>
+                <b id="tunerName">--</b>
+                <span class="hint" id="tunerSub"></span>
+              </div>
+              <button class="mini" id="tunerBack">changer de modele</button>
+            </div>
+
+            <div class="tuner-field">
+              <div class="tf-head"><label for="tSlots">Agents en parallele</label><output class="mono" id="tSlotsV">1</output></div>
+              <input type="range" id="tSlots" min="1" max="16" step="1">
+              <p class="help">Un agent = une conversation a la fois. Deux personnes qui ecrivent en meme temps occupent deux agents.</p>
+            </div>
+
+            <div class="tuner-field" id="tCtxField">
+              <div class="tf-head"><label for="tCtx">Contexte par agent</label><output class="mono" id="tCtxV">--</output></div>
+              <input type="range" id="tCtx" min="0" max="10" step="1">
+              <p class="help" id="tCtxHelp"></p>
+            </div>
+
+            <div class="tuner-vram">
+              <div class="tv-head"><span>VRAM estimee</span><strong class="mono" id="tvTotal">--</strong></div>
+              <div class="meter"><i id="tvBar"></i></div>
+              <p class="warn" id="tWarn" hidden></p>
+            </div>
+
+            <button class="btn primary big" id="tGo">Demander ce modele</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- connexion -->
+    <section class="panel wide">
+      <div class="panel-head">
+        <h2>Se connecter</h2>
+        <div class="tabs" id="cxTabs">
+          <button class="tab on" data-t="url">Adresse</button>
+          <button class="tab" data-t="opencode">opencode</button>
+          <button class="tab" data-t="curl">curl</button>
+          <button class="tab" data-t="py">Python</button>
+        </div>
+      </div>
+      <pre class="snippet mono" id="cxSnippet"></pre>
+      <button class="mini snippet-copy" id="cxCopy">copier</button>
+    </section>
+
+    <!-- activite -->
+    <section class="panel wide">
+      <div class="panel-head"><h2>Mes requetes</h2><span class="hint" id="actHint"></span></div>
+      <div class="table-wrap">
+        <table class="table" id="actTable">
+          <thead><tr><th>heure</th><th>modele</th><th class="num">entree</th><th class="num">sortie</th><th class="num">cout</th><th class="num">duree</th><th class="num">statut</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- petit avis : cinq etoiles, et on n'en parle plus -->
+<aside class="rate-pop" id="ratePop" hidden>
+  <button class="rate-close" id="rateClose" aria-label="fermer">×</button>
+
+  <!-- 1. la note -->
+  <div class="rate-step" id="rateStep1">
+    <div class="rate-q">Comment trouves-tu le service ?</div>
+    <div class="rate-stars" id="rateStars" role="radiogroup" aria-label="note sur cinq">
+      <button data-n="1" aria-label="1 etoile sur 5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg></button>
+      <button data-n="2" aria-label="2 etoiles sur 5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg></button>
+      <button data-n="3" aria-label="3 etoiles sur 5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg></button>
+      <button data-n="4" aria-label="4 etoiles sur 5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg></button>
+      <button data-n="5" aria-label="5 etoiles sur 5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg></button>
+    </div>
+    <div class="rate-legend" id="rateLegend">clique une etoile</div>
+    <div class="rate-after" id="rateAfter" hidden>
+      <input class="inp" id="rateWord" maxlength="200" placeholder="un mot, si tu veux">
+      <button class="btn primary" id="rateSend">Envoyer</button>
+    </div>
+  </div>
+
+  <!-- 2. la question du moment, s'il y en a une -->
+  <div class="rate-step" id="rateStep2" hidden>
+    <div class="rate-q" id="pollQuestion">--</div>
+    <div class="poll-choices" id="pollChoices"></div>
+    <div class="rate-after" id="pollAfter">
+      <input class="inp" id="pollWord" maxlength="200" placeholder="un mot, si tu veux">
+      <button class="btn primary" id="pollSend">Envoyer</button>
+    </div>
+  </div>
+
+  <!-- 3. merci -->
+  <div class="rate-step rate-done" id="rateStep3" hidden>
+    <svg class="rate-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+    <div id="rateThanks">Merci !</div>
+  </div>
+</aside>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/portal.js"></script>
+</body>
+</html>
