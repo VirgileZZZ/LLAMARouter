@@ -545,20 +545,3 @@ passe aux appareils distants.
 seuls. Supprimer `keys.json` revoque tout.
 
 ---
-
-## Limites connues
-
-- **Pas de chiffrement en local.** Sur le reseau domestique tout est en HTTP
-  simple. Le tunnel Cloudflare ajoute du HTTPS, Tailscale chiffre de bout en
-  bout ; la redirection de port n'apporte rien de tout ca.
-- **Les tokens sont exacts** des que llama.cpp renvoie un bloc `usage` — ce
-  qui est maintenant le cas aussi en flux, la console demandant
-  `include_usage`. Ils restent **estimes** si le build ne connait pas cette
-  option ; les valeurs estimees portent un `~` dans la page Activite.
-- **Les enveloppes ne sont pas un systeme de paiement.** Rien n'encaisse rien :
-  c'est un compteur qui coupe l'acces quand il arrive au bout.
-- **Un seul modele a la fois**, comme avec le `.bat`. C'est une limite du
-  materiel, pas de la console : 16 Go de VRAM ne tiennent pas deux modeles.
-- `Ling 3.0 tiny` ne se charge pas — `tensor 'blk.3.attn_q.weight' not found`
-  avec le build bailingmoe3. Le probleme vient du couple GGUF / build, il
-  existait avant la console. Meme chose a verifier pour `Ling 3.0 Flash`.
